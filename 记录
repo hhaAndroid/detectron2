@@ -1,0 +1,31 @@
+运行前终端先：
+export PATH=/usr/local/cuda/bin:$PATH
+
+或者加入 ./bashrc中
+
+vim ~/.bashrc
+source ~/.bashrc
+
+python setup.py build_ext --inplace
+
+pip install -r docs/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install psutil -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+export DETECTRON2_DATASETS=/home/PJLAB/huanghaian/dataset
+export PYTHONPATH="$(pwd)"
+
+# demo
+python demo.py --config-file ../configs/quick_schedules/retinanet_R_50_FPN_inference_acc_test.yaml --input demo.jpg
+
+python tools/train_net.py --num-gpus 1 --config-file configs/COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml
+
+# benchmark
+export DETECTRON2_DATASETS=/home/PJLAB/huanghaian/dataset
+
+原本代码：
+python tools/benchmark.py --task eval --num-gpus 1 --config-file configs/COCO-Detection/retinanet_R_50_FPN_1x.yaml
+
+
+采用 mmdet 相同的计算方式-分布式
+python -m torch.distributed.launch --nproc_per_node=1  --master_port=29500 tools/benchmark_mmdet.py --task eval --num-gpus 1 --config-file configs/COCO-Detection/retinanet_R_50_FPN_1x.yaml --launcher pytorch
+
