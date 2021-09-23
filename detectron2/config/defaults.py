@@ -1,6 +1,10 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 from .config import CfgNode as CN
 
+# NOTE: given the new config system
+# (https://detectron2.readthedocs.io/en/latest/tutorials/lazyconfigs.html),
+# we will stop adding new functionalities to default CfgNode.
+
 # -----------------------------------------------------------------------------
 # Convention about Training / Test specific parameters
 # -----------------------------------------------------------------------------
@@ -46,6 +50,8 @@ _C.MODEL.PIXEL_STD = [1.0, 1.0, 1.0]
 # INPUT
 # -----------------------------------------------------------------------------
 _C.INPUT = CN()
+# By default, {MIN,MAX}_SIZE options are used in transforms.ResizeShortestEdge.
+# Please refer to ResizeShortestEdge for detailed definition.
 # Size of the smallest side of the image during training
 _C.INPUT.MIN_SIZE_TRAIN = (800,)
 # Sample size of smallest side by choice or random selection from range give by
@@ -254,7 +260,7 @@ _C.MODEL.ROI_HEADS.IN_FEATURES = ["res4"]
 # Overlap threshold for an RoI to be considered foreground (if >= IOU_THRESHOLD)
 _C.MODEL.ROI_HEADS.IOU_THRESHOLDS = [0.5]
 _C.MODEL.ROI_HEADS.IOU_LABELS = [0, 1]
-# RoI minibatch size *per image* (number of regions of interest [ROIs])
+# RoI minibatch size *per image* (number of regions of interest [ROIs]) during training
 # Total number of RoIs per training minibatch =
 #   ROI_HEADS.BATCH_SIZE_PER_IMAGE * SOLVER.IMS_PER_BATCH
 # E.g., a common configuration is: 512 * 16 = 8192
@@ -504,7 +510,8 @@ _C.MODEL.RESNETS.DEFORM_NUM_GROUPS = 1
 # ---------------------------------------------------------------------------- #
 _C.SOLVER = CN()
 
-# See detectron2/solver/build.py for LR scheduler options
+# Options: WarmupMultiStepLR, WarmupCosineLR.
+# See detectron2/solver/build.py for definition.
 _C.SOLVER.LR_SCHEDULER_NAME = "WarmupMultiStepLR"
 
 _C.SOLVER.MAX_ITER = 40000
