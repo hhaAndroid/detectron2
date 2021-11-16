@@ -11,6 +11,7 @@ from typing import List, Union
 import pycocotools.mask as mask_util
 import torch
 from PIL import Image
+import mmcv
 
 from detectron2.structures import (
     BitMasks,
@@ -163,7 +164,7 @@ def _apply_exif_orientation(image):
     return image
 
 
-def read_image(file_name, format=None):
+def read_image(file_name, format=None, file_client=None):
     """
     Read an image into the given format.
     Will apply rotation and flipping if the image has such exif information.
@@ -177,12 +178,18 @@ def read_image(file_name, format=None):
             an HWC image in the given format, which is 0-255, uint8 for
             supported image modes in PIL or "BGR"; float (0-1 for Y) for YUV-BT.601.
     """
-    with PathManager.open(file_name, "rb") as f:
-        image = Image.open(f)
+    if file_client:
+        # TODO: just coco
+        img_bytes = file_client.get(file_name)
+        img = mmcv.imfrombytes(img_bytes, backend='pillow')
+        return img
+    else:
+        with PathManager.open(file_name, "rb") as f:
+            image = Image.open(f)
 
-        # work around this bug: https://github.com/python-pillow/Pillow/issues/3973
-        image = _apply_exif_orientation(image)
-        return convert_PIL_to_numpy(image, format)
+            # work around this bug: https://github.com/python-pillow/Pillow/issues/3973
+            image = _apply_exif_orientation(image)
+            return convert_PIL_to_numpy(image, format)
 
 
 def check_image_size(dataset_dict, image):
@@ -255,7 +262,7 @@ def transform_proposals(dataset_dict, image_shape, transforms, *, proposal_topk,
 
 
 def transform_instance_annotations(
-    annotation, transforms, image_size, *, keypoint_hflip_indices=None
+        annotation, transforms, image_size, *, keypoint_hflip_indices=None
 ):
     """
     Apply transforms to box, segmentation and keypoints annotations of a single instance.
@@ -471,7 +478,7 @@ def annotations_to_instances_rotated(annos, image_size):
 
 
 def filter_empty_instances(
-    instances, by_box=True, by_mask=True, box_threshold=1e-5, return_mask=False
+        instances, by_box=True, by_mask=True, box_threshold=1e-5, return_mask=False
 ):
     """
     Filter out empty instances in an `Instances` object.
@@ -546,10 +553,10 @@ def gen_crop_transform_with_instance(crop_size, image_size, instance):
     bbox = BoxMode.convert(instance["bbox"], instance["bbox_mode"], BoxMode.XYXY_ABS)
     center_yx = (bbox[1] + bbox[3]) * 0.5, (bbox[0] + bbox[2]) * 0.5
     assert (
-        image_size[0] >= center_yx[0] and image_size[1] >= center_yx[1]
+            image_size[0] >= center_yx[0] and image_size[1] >= center_yx[1]
     ), "The annotation bounding box is outside of the image!"
     assert (
-        image_size[0] >= crop_size[0] and image_size[1] >= crop_size[1]
+            image_size[0] >= crop_size[0] and image_size[1] >= crop_size[1]
     ), "Crop size is larger than image size!"
 
     min_yx = np.maximum(np.floor(center_yx).astype(np.int32) - crop_size, 0)

@@ -4,6 +4,7 @@ import logging
 import numpy as np
 from typing import List, Optional, Union
 import torch
+import mmcv
 
 from detectron2.config import configurable
 
@@ -36,17 +37,18 @@ class DatasetMapper:
 
     @configurable
     def __init__(
-        self,
-        is_train: bool,
-        *,
-        augmentations: List[Union[T.Augmentation, T.Transform]],
-        image_format: str,
-        use_instance_mask: bool = False,
-        use_keypoint: bool = False,
-        instance_mask_format: str = "polygon",
-        keypoint_hflip_indices: Optional[np.ndarray] = None,
-        precomputed_proposal_topk: Optional[int] = None,
-        recompute_boxes: bool = False,
+            self,
+            is_train: bool,
+            *,
+            augmentations: List[Union[T.Augmentation, T.Transform]],
+            image_format: str,
+            use_instance_mask: bool = False,
+            use_keypoint: bool = False,
+            instance_mask_format: str = "polygon",
+            keypoint_hflip_indices: Optional[np.ndarray] = None,
+            precomputed_proposal_topk: Optional[int] = None,
+            recompute_boxes: bool = False,
+            file_client_args=None
     ):
         """
         NOTE: this interface is experimental.
@@ -81,6 +83,10 @@ class DatasetMapper:
         logger = logging.getLogger(__name__)
         mode = "training" if is_train else "inference"
         logger.info(f"[DatasetMapper] Augmentations used in {mode}: {augmentations}")
+
+        self.file_client_args = file_client_args
+        if self.file_client_args:
+            self.file_client = mmcv.FileClient(**file_client_args)
 
     @classmethod
     def from_config(cls, cfg, is_train: bool = True):
@@ -151,7 +157,10 @@ class DatasetMapper:
         """
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
         # USER: Write your own image loading if it's not from a file
-        image = utils.read_image(dataset_dict["file_name"], format=self.image_format)
+        if self.file_client_args:
+            image = utils.read_image(dataset_dict["file_name"], format=self.image_format, file_client=self.file_client)
+        else:
+            image = utils.read_image(dataset_dict["file_name"], format=self.image_format)
         utils.check_image_size(dataset_dict, image)
 
         # USER: Remove if you don't do semantic/panoptic segmentation.
