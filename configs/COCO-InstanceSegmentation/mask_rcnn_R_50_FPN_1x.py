@@ -16,3 +16,4 @@ file_client_args = dict(
 
 dataloader.train.mapper.file_client_args = file_client_args
 dataloader.test.mapper.file_client_args = file_client_args
+train.checkpointer.max_to_keep = 2
