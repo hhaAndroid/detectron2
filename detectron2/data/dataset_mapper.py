@@ -86,7 +86,7 @@ class DatasetMapper:
 
         self.file_client_args = file_client_args
         if self.file_client_args:
-            self.file_client = mmcv.FileClient(**file_client_args)
+            self.file_client = mmcv.FileClient(**dict(file_client_args))
 
     @classmethod
     def from_config(cls, cfg, is_train: bool = True):
