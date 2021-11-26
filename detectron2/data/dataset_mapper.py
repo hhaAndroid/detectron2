@@ -99,6 +99,12 @@ class DatasetMapper:
         else:
             recompute_boxes = False
 
+        # Since CN does not support dictionary types, we wrap a layer of list.
+        if len(cfg.INPUT.FILE_CLIENT) == 0:
+            file_client_args = None
+        else:
+            file_client_args = cfg.INPUT.FILE_CLIENT[0]
+
         ret = {
             "is_train": is_train,
             "augmentations": augs,
@@ -107,6 +113,7 @@ class DatasetMapper:
             "instance_mask_format": cfg.INPUT.MASK_FORMAT,
             "use_keypoint": cfg.MODEL.KEYPOINT_ON,
             "recompute_boxes": recompute_boxes,
+            'file_client_args': file_client_args,
         }
 
         if cfg.MODEL.KEYPOINT_ON:

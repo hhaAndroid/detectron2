@@ -4,3 +4,13 @@ MODEL:
   MASK_ON: True
   RESNETS:
     DEPTH: 50
+
+# If you don't need ceph, just comment the following code directly
+INPUT:
+  FILE_CLIENT: !!python/object/apply:eval ["[dict(
+    backend='petrel',
+    path_mapping=dict({
+        'datasets/': 's3://openmmlab/datasets/detection/',
+        '.datasets/': 's3://openmmlab/datasets/detection/'
+    }))]"]
+
