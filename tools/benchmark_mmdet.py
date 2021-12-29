@@ -105,7 +105,7 @@ def benchmark_eval(args, dist):
 
     model.eval()
     logger.info("Model:\n{}".format(model))
-    DetectionCheckpointer(model).load(cfg.MODEL.WEIGHTS)
+    DetectionCheckpointer(model).load(args.ckpt)
 
     cfg.defrost()
     cfg.DATALOADER.NUM_WORKERS = 0
@@ -153,6 +153,7 @@ def benchmark_eval(args, dist):
 if __name__ == "__main__":
     parser = default_argument_parser()
     parser.add_argument("--task", choices=["train", "eval", "data"], required=True)
+    parser.add_argument("--ckpt", type=str, required=True)
     parser.add_argument(
         '--max-iter', type=int, default=2000, help='num of max iter')
     parser.add_argument(
