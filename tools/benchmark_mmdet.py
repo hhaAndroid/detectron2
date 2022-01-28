@@ -3,10 +3,10 @@
 import itertools
 import logging
 
-import tqdm
-from fvcore.common.timer import Timer
+from detectron2.config import LazyConfig
 from torch.nn.parallel import DistributedDataParallel
 
+from detectron2.config import instantiate
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
 from detectron2.data import (
@@ -85,11 +85,15 @@ def _init_dist_pytorch(backend, **kwargs):
 
 
 def setup(args):
-    cfg = get_cfg()
-    cfg.merge_from_file(args.config_file)
-    cfg.SOLVER.BASE_LR = 0.001  # Avoid NaNs. Not useful in this script anyway.
-    cfg.merge_from_list(args.opts)
-    cfg.freeze()
+    if args.config_file.endswith(".yaml"):
+        cfg = get_cfg()
+        cfg.merge_from_file(args.config_file)
+        cfg.SOLVER.BASE_LR = 0.001  # Avoid NaNs. Not useful in this script anyway.
+        cfg.merge_from_list(args.opts)
+        cfg.freeze()
+    else:
+        cfg = LazyConfig.load(args.config_file)
+        cfg = LazyConfig.apply_overrides(cfg, args.opts)
     setup_logger(distributed_rank=comm.get_rank())
     return cfg
 
@@ -97,7 +101,21 @@ def setup(args):
 @torch.no_grad()
 def benchmark_eval(args, dist):
     cfg = setup(args)
-    model = build_model(cfg)
+    if args.config_file.endswith(".yaml"):
+        model = build_model(cfg)
+        # DetectionCheckpointer(model).load(cfg.MODEL.WEIGHTS)
+
+        cfg.defrost()
+        cfg.DATALOADER.NUM_WORKERS = 0
+        data_loader = build_detection_test_loader(cfg, cfg.DATASETS.TEST[0])
+    else:
+        model = instantiate(cfg.model)
+        model.to(cfg.train.device)
+        DetectionCheckpointer(model).load(args.ckpt)
+
+        cfg.dataloader.num_workers = 0
+        data_loader = instantiate(cfg.dataloader.test)
+
     if dist:
         model = DistributedDataParallel(
             model, device_ids=[torch.cuda.current_device()], broadcast_buffers=False
@@ -105,11 +123,9 @@ def benchmark_eval(args, dist):
 
     model.eval()
     logger.info("Model:\n{}".format(model))
+    # define ckpt
     DetectionCheckpointer(model).load(args.ckpt)
 
-    cfg.defrost()
-    cfg.DATALOADER.NUM_WORKERS = 0
-    data_loader = build_detection_test_loader(cfg, cfg.DATASETS.TEST[0])
     dummy_data = DatasetFromList(list(itertools.islice(data_loader, args.max_iter)), copy=False)
 
     def f():
@@ -122,6 +138,8 @@ def benchmark_eval(args, dist):
 
     # benchmark with 2000 image and take the average
     for i, d in enumerate(f()):
+        # for x in d:
+        #     x["image"]=x["image"].cuda()
         torch.cuda.synchronize()
         start_time = time.perf_counter()
 
